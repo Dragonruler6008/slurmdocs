@@ -1,0 +1,131 @@
+For multiple clusters you would need multiple zones for DNS and srv records
+You'd probably then just break them out into different domains, e.g. compute1.wormulon.sci.utah.edu would be a compute node.
+
+# This is the srv record used at SCI
+    _slurmctld._tcp.sci.utah.edu 3600 IN SRV 0 0 6817 <hostname of controller node>
+
+
+# Slurm Install/Setup Rv.2 (we dont talk about Rv.1)
+
+    # Initial Packages needed for slurm.deb files so far
+        freeipmi-tools libhwloc-contrib-plugins opencl-icd
+
+    # User Setup
+
+        # Create Munge and Slurm Users
+
+            export MUNGEUSER=601
+            groupadd -g $MUNGEUSER munge
+            useradd  -m -c "MUNGE Auth" -d /var/lib/munge -u $MUNGEUSER -g munge  -s /sbin/nologin munge
+
+            export SLURMUSER=600
+            groupadd -g $SLURMUSER slurm
+            useradd  -m -c "SLURM workload manager" -d /var/lib/slurm -u $SLURMUSER -g slurm  -s /bin/bash slurm
+
+    # Munge Setup
+
+        # Install munge packages (on head and workers)
+
+            sudo apt install munge libmunge2 libmunge-dev
+
+        # Set the correct permissions for the Munge user (do this one first on head node)
+            sudo chown -R munge: /etc/munge/ /var/log/munge/ /var/lib/munge/ /run/munge/
+            sudo chmod 0700 /etc/munge/ /var/log/munge/ /var/lib/munge/
+            sudo chmod 0755 /run/munge/
+            sudo chmod 0700 /etc/munge/munge.key
+            sudo chown -R munge: /etc/munge/munge.key
+
+        # The munge.key should already be created under /etc/munge/munge.key
+        # Copy munge.key to all the worker nodes, make sure it is in the same folder across hosts
+
+        # Run the following again after you copy munge.key into /etc/munge/ on all hosts
+        # Set the correct permissions for the Munge user
+            sudo chown -R munge: /etc/munge/ /var/log/munge/ /var/lib/munge/ /run/munge/
+            sudo chmod 0700 /etc/munge/ /var/log/munge/ /var/lib/munge/
+            sudo chmod 0755 /run/munge/
+            sudo chmod 0700 /etc/munge/munge.key
+            sudo chown -R munge: /etc/munge/munge.key
+
+        # RESTART MUNGE AFTER KEY CHANGE
+            systemctl enable munge
+            systemctl restart munge
+
+    # Setup Database Node
+
+        sudo apt-get install mariadb-server -y
+
+        # Start mariadb
+            systemctl start mariadb
+            systemctl enable mariadb
+
+        # Grant slurm user full rights to the slurm_acct_db database
+            mysql -u root -p
+            mysql> grant all on slurm_acct_db.* TO 'slurm'@'localhost' identified by 'some_pass' with grant option;
+            mysql> create database slurm_acct_db;
+
+        # Create / edit slurm DB conf file under /etc/slurm/slurmdbd.conf
+            # Here is an example conf:
+                LogFile=/var/log/slurm/slurmdbd.log
+                DbdHost=localhost    # Replace by the slurmdbd server hostname (for example, slurmdbd.my.domain)
+                DbdPort=6819    # The default value
+                SlurmUser=slurm
+                StorageHost=localhost # Should be the hostname where slurmdbd is running (localhost, etc...)
+                StoragePass=XXXXXXXXXXXXXX    # The above defined database password, change it for your site!
+                StorageLoc=slurm_acct_db
+                StorageType=accounting_storage/mysql
+
+                # Purge the database after a certain time
+                PurgeEventAfter=12months
+                PurgeJobAfter=12months
+                PurgeResvAfter=2months
+                PurgeStepAfter=2months
+                PurgeSuspendAfter=1month
+                PurgeTXNAfter=12months
+                PurgeUsageAfter=12months
+
+        # Start mariadb
+            systemctl start slurmdbd
+            systemctl enable slurmdbd
+
+
+
+    # Slurm install through APT
+
+        # Slurm packages
+            sudo apt install slurm-wlm -y (Done on all nodes)
+            sudo apt install slurmdbd -y  (only done on DBD node/server)
+
+        # Use the configurator to make a config file for all the clusters
+        # find it in /usr/share/doc/slurmctld/configurator
+        # Edit to your liking then copy the contents to /etc/slurm/slurm.config
+
+            Config worthy mentions to keep in mind
+                    SlurmctldParameters=enable_configless # Allows configless to work
+                    ...
+                    AccountingStorageHost=wormulonctl # Hostname of DBD server
+                    AccountingStoragePass="/var/run/munge/munge.socket.2=" # Munge socket from "/var/run/munge/"
+                    AccountingStorageType=accounting_storage/slurmdbd # Use slurmdbd for database operations
+                    AccountingStorageUser=slurm # User for the database
+
+        # For Head node (maybe, need to look more into head node perms)
+        chown root:root /var/lib/slurm
+        chmod -R 755 /var/lib/slurm
+
+        # For Nodes
+            chown root:root /var/lib/slurm
+            chmod -R 755 /var/lib/slurm
+            mkdir /var/log/slurm/
+            touch /var/log/slurm/slurmd.log
+            chown -R slurm:slurm /var/log/slurm/slurmd.log
+
+        # Start the DBD server daemon (DBD server)
+            systemctl enable slurmdbd
+            systemctl restart slurmdbd
+
+        # Start the slurm services (Head)
+            systemctl enable slurmctld
+            systemctl restart slurmctld
+
+        # Start the slurm services (workers)
+            systemctl enable slurmd
+            systemctl restart slurmd
