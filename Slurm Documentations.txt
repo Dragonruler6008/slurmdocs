@@ -129,3 +129,24 @@ You'd probably then just break them out into different domains, e.g. compute1.wo
         # Start the slurm services (workers)
             systemctl enable slurmd
             systemctl restart slurmd
+
+    # Slurm install via built packages
+
+        # Initial Packages installation
+            dpkg -i slurm-smd_24.05.1-1_amd64.deb
+            (This package was built with dependancies that are not on default installs) You can run sudo apt-get --fix-broken install and it will get the needed packages.
+            **freeipmi-common libaec0 libb64-0d libfreeipmi17 libhdf5-103-1t64 libhdf5-hl-100t64 libhwloc-plugins libhwloc15
+                libipmimonitoring6 libjwt2 liblua5.3-0 librdkafka1 libsz2 libxnvctrl0 ocl-icd-libopencl1**
+            dpkg -i slurm-smd-client_24.05.1-1_amd64.deb
+            dpkg -i slurm-smd-slurmd_24.05.1-1_amd64.deb
+
+        # For Head node
+            chown root:root /var/lib/slurm
+            chmod -R 755 /var/lib/slurm
+
+        # For Nodes
+            chown root:root /var/lib/slurm
+            chmod -R 755 /var/lib/slurm
+            mkdir /var/log/slurm/
+            touch /var/log/slurm/slurmd.log
+            chown -R slurm:slurm /var/log/slurm/slurmd.log
