@@ -5,14 +5,12 @@ You'd probably then just break them out into different domains, e.g. compute1.wo
     _slurmctld._tcp.sci.utah.edu 3600 IN SRV 0 0 6817 <hostname of controller node>
 
 
-# Slurm Install/Setup Rv.2 (we dont talk about Rv.1)
+# Slurm Install/Setup Rv.2 (We don't talk about Rv.1)
 
-    # Initial Packages needed for slurm.deb files so far
-        freeipmi-tools libhwloc-contrib-plugins opencl-icd
 
     # User Setup
 
-        # Create Munge and Slurm Users
+        # Create Munge and Slurm Users (ALL SYSTEMS)
 
             export MUNGEUSER=601
             groupadd -g $MUNGEUSER munge
@@ -35,14 +33,11 @@ You'd probably then just break them out into different domains, e.g. compute1.wo
             sudo chmod 0700 /etc/munge/munge.key
             sudo chown -R munge: /etc/munge/munge.key
 
-        # The munge.key should already be created under /etc/munge/munge.key
+        # The munge.key should already be created under /etc/munge/munge.key on the controller
         # Copy munge.key to all the worker nodes, make sure it is in the same folder across hosts
 
         # Run the following again after you copy munge.key into /etc/munge/ on all hosts
         # Set the correct permissions for the Munge user
-            sudo chown -R munge: /etc/munge/ /var/log/munge/ /var/lib/munge/ /run/munge/
-            sudo chmod 0700 /etc/munge/ /var/log/munge/ /var/lib/munge/
-            sudo chmod 0755 /run/munge/
             sudo chmod 0700 /etc/munge/munge.key
             sudo chown -R munge: /etc/munge/munge.key
 
@@ -53,6 +48,7 @@ You'd probably then just break them out into different domains, e.g. compute1.wo
     # Setup Database Node
 
         sudo apt-get install mariadb-server -y
+        sudo apt install ./slurm-smd-slurmdbd_24.05.1-1_amd64.deb (From Slurm packages)
 
         # Start mariadb
             systemctl start mariadb
@@ -69,12 +65,11 @@ You'd probably then just break them out into different domains, e.g. compute1.wo
                 DbdHost=localhost    # Replace by the slurmdbd server hostname (for example, slurmdbd.my.domain)
                 DbdPort=6819    # The default value
                 SlurmUser=slurm
-                StorageHost=localhost # Should be the hostname where slurmdbd is running (localhost, etc...)
-                StoragePass=XXXXXXXXXXXXXX    # The above defined database password, change it for your site!
+                StorageHost=localhost
+                StoragePass=slurmtestdbpass    # The above defined database password, change it for your site!
                 StorageLoc=slurm_acct_db
                 StorageType=accounting_storage/mysql
 
-                # Purge the database after a certain time
                 PurgeEventAfter=12months
                 PurgeJobAfter=12months
                 PurgeResvAfter=2months
@@ -83,13 +78,26 @@ You'd probably then just break them out into different domains, e.g. compute1.wo
                 PurgeTXNAfter=12months
                 PurgeUsageAfter=12months
 
-        # Start mariadb
+        # SLURM USES MUNGE SOCKETS FOR DBD COMMS
+            # Relevant section from slurm.conf
+                # LOGGING AND ACCOUNTING
+                AccountingStorageEnforce=limits
+                AccountingStorageTRES=gres/gpu,gres/shard
+                AccountingStorageHost=wormulonctl
+                AccountingStoragePass="/var/run/munge/munge.socket.2="      #### ATTENTION TO THIS
+                #AccountingStoragePort=
+                AccountingStorageType=accounting_storage/slurmdbd
+                AccountingStorageUser=slurm
+
+        # Start mariadb and slurm dbd
             systemctl start slurmdbd
             systemctl enable slurmdbd
+            systemctl enable slurmdbd
+            systemctl start slurmdbd
 
 
 
-    # Slurm install through APT
+    # Slurm install through APT (OLD WAY VIA DISTRO PACKAGES)
 
         # Slurm packages
             sudo apt install slurm-wlm -y (Done on all nodes)
@@ -130,23 +138,100 @@ You'd probably then just break them out into different domains, e.g. compute1.wo
             systemctl enable slurmd
             systemctl restart slurmd
 
-    # Slurm install via built packages
+    # Slurm install via built packages (Lucas' Recommended Way)
 
-        # Initial Packages installation
-            dpkg -i slurm-smd_24.05.1-1_amd64.deb
-            (This package was built with dependancies that are not on default installs, maybe this can be fixed later) You can run sudo apt-get --fix-broken install and it will get the needed packages.
-            **freeipmi-common libaec0 libb64-0d libfreeipmi17 libhdf5-103-1t64 libhdf5-hl-100t64 libhwloc-plugins libhwloc15
-                libipmimonitoring6 libjwt2 liblua5.3-0 librdkafka1 libsz2 libxnvctrl0 ocl-icd-libopencl1**
-            dpkg -i slurm-smd-client_24.05.1-1_amd64.deb
-            dpkg -i slurm-smd-slurmd_24.05.1-1_amd64.deb
+        # Initial Packages installation For all worker nodes
+            sudo apt install ./slurm-smd_24.05.1-1_amd64.deb
+            sudo apt install ./slurm-smd-client_24.05.1-1_amd64.deb
+            sudo apt install ./slurm-smd-slurmd_24.05.1-1_amd64.deb
 
-        # For Head node
+        # Packages for Head Node
+            sudo apt install ./slurm-smd_24.05.1-1_amd64.deb
+            sudo apt install ./slurm-smd-client_24.05.1-1_amd64.deb
+            sudo apt install ./slurm-smd-slurmctld_24.05.1-1_amd64.deb
+
+        # For database Node
+            sudo apt install ./slurm-smd_24.05.1-1_amd64.deb
+            sudo apt install ./slurm-smd-slurmdbd_24.05.1-1_amd64.deb
+
+        # Head node FS perms
             chown root:root /var/lib/slurm
             chmod -R 755 /var/lib/slurm
 
-        # For Nodes
+        #  Node FS Perms
             chown root:root /var/lib/slurm
             chmod -R 755 /var/lib/slurm
             mkdir /var/log/slurm/
             touch /var/log/slurm/slurmd.log
             chown -R slurm:slurm /var/log/slurm/slurmd.log
+        
+        # Start the DBD server daemon (DBD server)
+            systemctl enable slurmdbd
+            systemctl restart slurmdbd
+
+        # Start the slurm services (Head)
+            systemctl enable slurmctld
+            systemctl restart slurmctld
+
+        # Start the slurm services (workers)
+            systemctl enable slurmd
+            systemctl restart slurmd
+
+
+# Account Management
+    # Initialize the cluster in slurm accounting
+        sacctmgr create cluster <Cluster>       EX. <cluster>=wormulon
+
+    # *sacctmgr* is the main account managing command
+
+        # Default QOS's/Accounts (Everyone will use)
+            # Main for shared resources QOS
+                sacctmgr create qos name=<default shared> priority=100000 maxwall=3-00:00:00
+
+            # Main for Guest on owner nodes
+                sacctmgr create account name=owner-guest org=<sci> description=<something>
+                sacctmgr create qos name=<cluster-guest> priority=10000 grpwall=3-00:00:00 flags=NoReserve
+
+            # Associate owner-guest QOS to Account
+                sacctmgr modify account name=owner-guest set qos=<cluster-guest>
+                sacctmgr modify account name=owner-guest set defaultqos=<cluster-guest>
+
+        # Create Accounts (Not users)
+            # PI Accounts for shared
+                sacctmgr create account name=<PI> org=<sci> description=<Something here>
+
+            # Account for pi on owner machines
+                sacctmgr create account name=<PI-Cluster> org=<sci> description=<PI Owner Account> 
+
+            #EX. for cluster: wormulon (so it would be PI-wormulon, change *cluster* to fit needs)
+
+            # QOS for Owner Accounts
+                sacctmgr create qos name=<PI-cluster> priority=100000 maxwall=7-00:00:00 preempt=owner-guest 
+
+            # Associate QOS to PI Accounts
+                sacctmgr modify account name=<PI> set qos=<default shared>
+                sacctmgr modify account name=<PI> set defaultqos=<default shared>
+
+            # Associate QOS to PI Owner Accounts
+                sacctmgr modify account name=<PI-cluster> set qos=<PI-cluster>
+                sacctmgr modify account name=<PI-cluster> set defaultqos=<PI-cluster>
+
+
+        # Create users
+            # Create user with default pi account (SHOULD INHERIT QOS FROM ACCOUNTS IF DONE PROPERLY)
+                sacctmgr create user name=<USER> account=<PI>
+
+            # Add users to additional Accounts
+                sacctmgr add user <USER> account=owner-guest
+                sacctmgr add user <USER> account=<PI-Cluster>
+
+
+# Restricting Accounts to certain partitions (useful for owner boxes)
+    # See Slurm.conf
+        # Partitions
+        PartitionName=wormulon Nodes=wormulon[1-3] Default=YES OverSubscribe=FORCE:4 State=UP
+        PartitionName=wormulon-guest Nodes=wormulon[4],dev[1] AllowAccounts=owner-guest DefMemPerCPU=5120 OverSubscribe=FORCE:4 State=UP
+        PartitionName=bigler-worm Nodes=wormulon[4],dev[1] AllowAccounts=bigler-worm DefMemPerCPU=5120 OverSubscribe=FORCE:4 State=UP
+
+        # Note the AllowAccounts, add accounts allowed to use this partition here. Note how the general wormulon partition has none, this is so everyone can use it.
+        # Also vist the slurm docs for more in depth explanations of things.
