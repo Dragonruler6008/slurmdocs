@@ -90,8 +90,9 @@ You'd probably then just break them out into different domains, e.g. compute1.wo
                 AccountingStorageUser=slurm
 
         # Start mariadb and slurm dbd
-            systemctl start slurmdbd
-            systemctl enable slurmdbd
+            systemctl start mariadb
+            systemctl enable mariadb
+        
             systemctl enable slurmdbd
             systemctl start slurmdbd
 
