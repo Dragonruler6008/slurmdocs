@@ -56,6 +56,8 @@ The other packages there are for other compute things such as MPI and the rest a
 
 # Building the cluster
 
+**Important Note: Make sure to name your machines appropriately as doing so now makes it a lot easier later. Keep it simple. Do like 2 letters then a number for the node. This will make the config part MUCH easier later**
+
 ## Controller Node Setup
 
 We will start with the controller node as it is the most important node in the cluster it controls the configs and delegates work to the compute nodes.
@@ -256,7 +258,7 @@ Start mariadb and slurm dbd
     systemctl enable slurmdbd
     systemctl start slurmdbd
 
-##### END OF DATABASE SETUP SECTION
+##### End of Database Node Section
 
 ## Account and cluster accounting
 
@@ -291,7 +293,7 @@ Account for pi on owner machines
 
     sacctmgr create account name=<PI-Cluster> org=<sci> description=<PI Owner Account> 
 
-EX. for cluster: wormulon (so it would be PI-wormulon, change *cluster* to fit needs)
+EX. for cluster: wormulon (so it would be PI-wormulon, change *Cluster* to fit needs)
 
 QOS for Owner Accounts
 
