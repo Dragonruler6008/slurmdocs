@@ -28,7 +28,7 @@ Now that we have that all installed go ahead and make a temp dir on the machine 
 
     cd /var/tmp/slurmbuild
 
-**NOTE: Current version of Slurm SCI is using is 24.05.1, if it needs to be updated you need to build new pakages above.**
+**NOTE: Current version of Slurm SCI is using is 24.05.1, if it needs to be updated you need to build new packages above.**
 
 In the slurmbuild directory run `wget https://download.schedmd.com/slurm/slurm-24.05.1.tar.bz2` **Note version and download appropriately**
 
