@@ -1,7 +1,7 @@
 # Slurm Documentation for SCI
 
-These are the docs that I am compiling for SCI so that the Slurm install is documented. This readme serves as a one stop shop for all things slurm at SCI.
-You can find slurms main docs here: https://slurm.schedmd.com/documentation.html This is where you can find the nitty gritty about Slurm
+These are the docs that compiled for SCI so that the Slurm install is documented. This readme serves as a one stop shop for all things Slurm at SCI.
+You can find Slurms main docs here: https://slurm.schedmd.com/documentation.html This is where you can find the nitty gritty about Slurm
 
 #### Purpose
 The Wormulon Cluster is meant for testing the functionality and viability of a compute cluster administered by SCI. It consists of a controller node (wormulonctl) and 5 worker nodes (wormulon1-4, dev1). The controller node handles the database, login and delegation of the work to the worker nodes. The worker nodes have no login except for SCI-IT to administer and maintain.
@@ -10,35 +10,35 @@ The Wormulon Cluster is meant for testing the functionality and viability of a c
 
 ## Building the Slurm .deb files
 
-**Note, There will usually be prebuilt .deb files so you may not need to run these steps. Please ask before creating new .deb files, thanks :)**
+**Note, There will usually be prebuilt .deb files if just adding a compute node so you may not need to run these steps. Please ask before creating new .deb files, thanks :)**
 
 To build the slurm .deb files there are a few prerequisites that you need to take into account for it to work as intended.
-For NVIDIA GPU support these need to be built on a GPU system. You can use a gpu enabled package on non gpu systems and it still works.
+For NVIDIA GPU support these need to be built on a GPU system. You can use a gpu enabled Slurm package on non gpu systems and it still works.
 
 Make sure to install all the nvidia packages first (nvidia drivers, nvidia-cuda-toolkit, cuda-toolkit, ect...)
 Packages need to be present in order for slurm to build support for them. So we install the needed packages now before we build.
 
-`sudo apt install munge libmunge2 libmunge-dev build-essential fakeroot devscripts git gcc make ruby ruby-dev libpam0g-dev libmysqlclient-dev mariadb-server libssl-dev hwloc equivs`
+    sudo apt install munge libmunge2 libmunge-dev build-essential fakeroot devscripts git gcc make ruby ruby-dev libpam0g-dev libmysqlclient-dev mariadb-server libssl-dev hwloc equivs
 
-This will build the most generic slurm install .deb. It includes functionality that we may want in the future.
+This will build the most generic Slurm install .deb. It includes functionality that we may want in the future.
 
 Now that we have that all installed go ahead and make a temp dir on the machine you are building from.
 
-`sudo mkdir /var/tmp/slurmbuild`
+    sudo mkdir /var/tmp/slurmbuild
 
-`cd /var/tmp/slurmbuild`
+    cd /var/tmp/slurmbuild
 
 **NOTE: Current version of Slurm SCI is using is 24.05.1, if it needs to be updated you need to build new pakages above.**
 
 In the slurmbuild directory run `wget https://download.schedmd.com/slurm/slurm-24.05.1.tar.bz2` **Note version and download appropriately**
 
-Unzip the slurm source `tar -xaf slurm*tar.bz2`
+Unzip the Slurm source `tar -xaf slurm*tar.bz2`
 
 Cd into the source directory
 
 Install the Slurm package dependencies: `mk-build-deps -i debian/control`
 
-Build the slurm packages with: `debuild -b -uc -us`
+Build the Slurm packages with: `debuild -b -uc -us`
 
 Packages will end up in the slurmbuilds directory.
 
